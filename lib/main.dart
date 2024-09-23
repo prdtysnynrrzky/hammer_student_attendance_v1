@@ -22,6 +22,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Attendance App Test',
       builder: BotToastInit(),
       navigatorObservers: [BotToastNavigatorObserver()],
       initialRoute: SplashScreen.routeName,

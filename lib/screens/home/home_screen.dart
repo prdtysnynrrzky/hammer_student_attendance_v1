@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hammer_student_attendance/services/attendance_service.dart';
+import 'package:hammer_student_attendance/services/text_to_speech_service.dart';
 import 'package:hammer_student_attendance/widgets/loading.dart';
 import 'package:hammer_student_attendance/widgets/message/errorMessage.dart';
 import 'package:hammer_student_attendance/widgets/message/successMessage.dart';
@@ -15,34 +15,60 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  TextEditingController rfidController = TextEditingController();
+  bool isLoading = false;
+
+  void _handleSubmit() async {
+    final rfid = rfidController.text.trim();
+
+    if (rfid.length < 3) {
+      showErrorMessage("RFID minimal 3 karakter!");
+      TextToSpeechService().queue('RFID minimal 3 karakter!');
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      showLoading();
+    });
+
+    final result = await AttendanceService().postAttendance(rfid);
+
+    setState(() {
+      isLoading = false;
+      stopLoading();
+    });
+
+    if (result.code == 200) {
+      showSuccessMessage(result.message.toString());
+    } else {
+      showErrorMessage(result.message.toString());
+    }
+
+    TextToSpeechService().queue(result.message.toString());
+    rfidController.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
-    TextEditingController rfidController = TextEditingController();
-
-    // Getting device width and height
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double screenHeight = MediaQuery.of(context).size.height;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: SizedBox(
-          width: screenWidth,
-          height: screenHeight,
+          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.height,
           child: Row(
             children: [
               Expanded(
                 flex: 3,
                 child: Container(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Adjust image width dynamically based on screen width
-                      Image.asset(
-                        'assets/illustrations/attendance.png',
-                        fit: BoxFit.contain,
-                      ),
-                    ],
+                  width: double.infinity,
+                  height: double.infinity,
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: Image.asset(
+                      'assets/images/home.png',
+                    ),
                   ),
                 ),
               ),
@@ -80,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Align(
                               alignment: Alignment.centerLeft,
                               child: Text(
-                                "Tab Kartu anda untuk absen hari ini",
+                                "Tab Kartu anda untuk melakukan absensi",
                                 style: GoogleFonts.poppins(
                                     fontSize: 16,
                                     color: Colors.black,
@@ -93,33 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             TextField(
                               autofocus: true,
                               controller: rfidController,
-                              onEditingComplete: () {
-                                final rfid = rfidController.text;
-
-                                if (rfid.length < 3) {
-                                  showErrorMessage("RFID minimal 3 karakter");
-                                  return;
-                                }
-
-                                showLoading();
-                                AttendanceService()
-                                    .postAttendance(rfid)
-                                    .then((value) {
-                                  stopLoading();
-                                  if (value.code == 200) {
-                                    showSuccessMessage(
-                                        value.message.toString());
-                                    rfidController.clear();
-                                  } else if (value.code == 400) {
-                                    showSuccessMessage(
-                                        value.message.toString());
-                                    rfidController.clear();
-                                  } else {
-                                    showErrorMessage(value.message.toString());
-                                    rfidController.clear();
-                                  }
-                                });
-                              },
+                              onEditingComplete: _handleSubmit,
                               cursorColor: const Color(0xFFEEEEEE),
                               decoration: InputDecoration(
                                 filled: true,
@@ -137,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 80,
                       ),
                       Text(
-                        "${DateTime.now().year} SMKPGRIWLINGI All Rights Reversed",
+                        "${DateTime.now().year} SMKPGRIWLINGI All Rights Reserved",
                         style: GoogleFonts.poppins(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
